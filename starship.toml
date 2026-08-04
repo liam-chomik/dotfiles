@@ -1,0 +1,78 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+format = """
+[](fg:#282828)$directory$git_branch$git_status$fill$cmd_duration
+$character"""
+
+palette = "gruvbox_material_dark"
+
+[palettes.gruvbox_material_dark]
+bg = "#282828"
+fg = "#d4be98"
+muted = "#7c6f64"
+blue = "#7daea3"
+green = "#a9b665"
+red = "#ea6962"
+yellow = "#d8a657"
+purple = "#d3869b"
+aqua = "#89b482"
+
+[directory]
+style = "bold blue"
+format = "[$path]($style) "
+truncation_length = 3
+truncate_to_repo = true
+
+[git_branch]
+style = "purple"
+format = "on [ $branch]($style) "
+
+[git_status]
+style = "red"
+format = "[$all_status$ahead_behind]($style) "
+
+[fill]
+symbol = " "
+
+[cmd_duration]
+style = "muted"
+format = "took [$duration]($style) "
+min_time = 3000
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
+
+[username]
+style_user = "aqua"
+style_root = "bold red"
+format = "[$user]($style) "
+disabled = false
+show_always = false
+
+[hostname]
+style = "muted"
+format = "[@$hostname]($style) "
+ssh_only = true
+disabled = false
+
+[nodejs]
+symbol = " "
+style = "green"
+format = "via [$symbol$version]($style) "
+
+[python]
+symbol = " "
+style = "yellow"
+format = "via [$symbol$version]($style) "
+
+[rust]
+symbol = " "
+style = "red"
+format = "via [$symbol$version]($style) "
+
+[golang]
+symbol = " "
+style = "aqua"
+format = "via [$symbol$version]($style) "
