@@ -10,6 +10,8 @@ Dark across every tool.
 | --- | --- | --- |
 | `zshrc` | `~/.zshrc` | Shell: history, completion, plugins, aliases, tool init |
 | `vimrc` | `~/.vimrc` | Vim: statusline, persistent undo, WSL clipboard bridge |
+| `gitconfig` | `~/.gitconfig` | Git: aliases, diff and log formatting, safety defaults |
+| `gitignore_global` | `~/.gitignore_global` | Editor, OS, and credential patterns ignored in every repo |
 | `starship.toml` | `~/.config/starship.toml` | Prompt |
 | `tmux/tmux.conf` | `~/.config/tmux/` | tmux: mouse, vi copy mode, status bar |
 | `bat/themes/` | `~/.config/bat/` | `bat` syntax theme |
@@ -27,12 +29,35 @@ cd ~/dotfiles && ./install.sh
 It is idempotent, and anything already sitting at a destination is moved to
 `<name>.bak.<timestamp>` rather than overwritten.
 
-Two manual steps remain:
+Three manual steps remain.
+
+**1. Set the commit identity**, before `install.sh` on a machine that already
+has a working `~/.gitconfig`. `gitconfig` sets `user.useConfigOnly`, so git
+refuses to invent an identity from `$USER@$HOSTNAME` and the first commit fails
+without this:
 
 ```sh
-chsh -s "$(which zsh)"     # requires a real terminal for authentication
-bat cache --build          # register the bat theme
+git config -f ~/.gitconfig_local user.name  "Your Name"
+git config -f ~/.gitconfig_local user.email "you@example.com"
 ```
+
+**2. Make zsh the login shell.** Needs a real terminal for authentication:
+
+```sh
+chsh -s "$(which zsh)"
+```
+
+**3. Register the bat theme**, which bat reads from its own cache:
+
+```sh
+bat cache --build
+```
+
+## Local overrides
+
+`~/.gitconfig_local` stays outside version control so the commit identity and
+any machine-specific settings never reach a commit. `gitconfig` pulls it in
+through an `[include]` at the end, so it can override anything above it.
 
 ## Dependencies
 

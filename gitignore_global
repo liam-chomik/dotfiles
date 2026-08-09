@@ -1,0 +1,48 @@
+# ~/.gitignore_global
+# Editor and OS artifacts, ignored in every repository on this machine.
+# Wired up through core.excludesfile in gitconfig.
+#
+# This does not replace a repository's own .gitignore: that one travels with a
+# clone, while this file only exists where these dotfiles are installed.
+
+# Vim
+.sw[a-p]
+[._]*.sw[a-p]
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Compiled output
+*.o
+*.pyc
+*.class
+__pycache__/
+
+# macOS
+.DS_Store
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Credentials. A backstop against an accidental `git add -A`, not a substitute
+# for keeping secrets out of the working tree in the first place: anything not
+# listed here still commits, and a file already tracked is unaffected.
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ecdsa*
+id_ed25519*
+.env
+.env.*
+!.env.example
+!.env.sample

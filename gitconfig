@@ -1,0 +1,132 @@
+# ~/.gitconfig
+# Portable git settings. The commit identity lives in ~/.gitconfig_local,
+# included at the end of this file, so it is never committed here.
+
+[user]
+	# Refuse to synthesize an identity from $USER@$HOSTNAME. Without this, a
+	# machine missing ~/.gitconfig_local commits under a hostname-derived
+	# address and puts that hostname into public history; with it, the commit
+	# fails instead.
+	useConfigOnly = true
+
+[core]
+	editor = vim
+	excludesfile = ~/.gitignore_global
+	# Repositories on the Windows mount pick up CRLF from Windows editors.
+	# input converts to LF on commit and never on checkout, keeping history
+	# LF-only regardless of which side wrote the file.
+	autocrlf = input
+	# warn reports a conversion that will not round-trip; true refuses the
+	# commit outright, which blocks on files the repository did not author.
+	safecrlf = warn
+
+[init]
+	defaultBranch = main
+
+[pull]
+	# A diverged pull errors out rather than silently writing a merge commit.
+	ff = only
+
+[push]
+	autoSetupRemote = true
+
+[fetch]
+	prune = true
+
+[credential]
+	# Held in memory and expired, unlike the store helper, which writes the
+	# token to ~/.git-credentials in plain text.
+	helper = cache --timeout=3600
+
+[color]
+	ui = auto
+
+[color "grep"]
+	match = cyan bold
+	filename = magenta
+	linenumber = green
+	separator = yellow
+	function = blue
+
+[grep]
+	lineNumber = true
+
+[log]
+	date = auto:human
+
+[diff]
+	# Misattributes fewer hunks than the default myers, notably where a block
+	# moves and its closing brace is matched to the wrong function.
+	algorithm = histogram
+	# i/w/c index/worktree/commit prefixes instead of the ambiguous a/ and b/.
+	mnemonicPrefix = true
+	# Split words on whitespace so --color-words does not treat punctuation as
+	# a boundary and fragment every changed line.
+	wordRegex = "[^[:space:]]|([[:alnum:]]|UTF_8_GUARD)+"
+	colorMoved = default
+
+[merge]
+	defaultToUpstream = true
+	tool = vimdiff
+	conflictStyle = zdiff3
+
+[mergetool]
+	keepBackup = false
+
+[rerere]
+	# Record conflict resolutions and replay them, which pays off across a
+	# rebase that hits the same conflict on several commits.
+	enabled = true
+
+[advice]
+	detachedHead = false
+	waitingForEditor = false
+
+[help]
+	# Ask before running a corrected subcommand. The numeric forms run the
+	# guess after a delay instead of asking.
+	autocorrect = prompt
+
+[url "git@github.com:"]
+	insteadOf = gh:
+
+[pretty]
+	line = "%C(auto)%h %<|(60,trunc)%s %C(green)%ad%C(auto)%d"
+
+[alias]
+	st = status -sb
+	br = branch -vv
+	bra = branch -vv --all
+	co = checkout
+	sw = switch
+	aa = add --all :/
+	ci = commit -v
+	ca = commit --amend -v
+
+	di = diff
+	dis = diff --stat
+	diw = diff --color-words
+	dc = diff --cached
+	dcs = diff --cached --stat
+	dcw = diff --cached --color-words
+
+	f = fetch --tags --prune
+	ff = merge --ff-only
+
+	# Aborts if the remote moved since the last fetch, where --force overwrites
+	# whatever is there. Aliased so the safe form is the one that gets typed.
+	pf = push --force-with-lease
+
+	gr = log --graph --format=line
+	gra = log --graph --format=line --all
+
+	# Absolute path of the repository root, for use in shell expansions.
+	root = rev-parse --show-toplevel
+
+	# Branches by how recently they were committed to, for finding the one that
+	# was being worked on before the interruption.
+	wip = for-each-ref --sort=-authordate:iso8601 --format='%(color:green)%(authordate:relative)%09%(color:reset)%(refname:short)' refs/heads
+
+[include]
+	# Machine-specific settings, including the commit identity. Not tracked.
+	path = ~/.gitconfig_local

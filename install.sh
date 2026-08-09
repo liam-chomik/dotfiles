@@ -13,6 +13,8 @@ DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LINKS=(
   "zshrc:.zshrc"
   "vimrc:.vimrc"
+  "gitconfig:.gitconfig"
+  "gitignore_global:.gitignore_global"
   "starship.toml:.config/starship.toml"
   "tmux:.config/tmux"
   "bat:.config/bat"

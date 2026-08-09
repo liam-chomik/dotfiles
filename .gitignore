@@ -1,4 +1,6 @@
-# Editor and OS artifacts
+# Editor and OS artifacts. Overlaps gitignore_global on purpose: that file only
+# exists on machines where these dotfiles are installed, while this one travels
+# with a clone.
 *.swp
 *.swo
 *~
