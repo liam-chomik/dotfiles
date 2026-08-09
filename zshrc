@@ -2,6 +2,10 @@
 # Interactive shell configuration. Theme: Gruvbox Material Dark.
 
 # --- PATH ---
+# zsh ties the path array to PATH; -U keeps it deduplicated. Without it, a
+# nested shell re-runs the line below and appends a second copy of the entry,
+# which compounds with every further nesting.
+typeset -U path PATH
 export PATH="$HOME/.local/bin:$PATH"
 
 # --- default editor (git commit messages, crontab, less -v, etc.) ---
