@@ -55,9 +55,14 @@ bat cache --build
 
 ## Local overrides
 
-`~/.gitconfig_local` stays outside version control so the commit identity and
-any machine-specific settings never reach a commit. `gitconfig` pulls it in
-through an `[include]` at the end, so it can override anything above it.
+Two files stay outside version control so machine-specific settings never reach
+a commit. Both are optional and sourced last, so either can override anything
+the tracked configs set.
+
+| File | Read by |
+| --- | --- |
+| `~/.gitconfig_local` | `gitconfig`, through an `[include]` at the end |
+| `~/.zshrc_local` | `zshrc`, sourced at the end |
 
 ## Dependencies
 
@@ -68,6 +73,12 @@ through an `[include]` at the end, so it can override anything above it.
 [fzf](https://github.com/junegunn/fzf),
 [zoxide](https://github.com/ajeetdsouza/zoxide),
 [fastfetch](https://github.com/fastfetch-cli/fastfetch).
+
+Optional, each degrading rather than breaking:
+[fd](https://github.com/sharkdp/fd) and
+[ripgrep](https://github.com/BurntSushi/ripgrep) back fzf's file walk, falling
+back to fzf's own walk without them. Debian packages fd as `fdfind`, which is
+the name `zshrc` looks for.
 
 Vim and zsh plugins are cloned by `install.sh` and are not listed here; the
 tables at the top of that script are the authoritative list.
