@@ -23,8 +23,8 @@ git clone git@github.com:liam-chomik/dotfiles.git ~/dotfiles
 cd ~/dotfiles && ./install.sh
 ```
 
-`install.sh` symlinks each config into place and clones the vim plugins. It is
-idempotent, and anything already sitting at a destination is moved to
+`install.sh` symlinks each config into place and clones the vim and zsh plugins.
+It is idempotent, and anything already sitting at a destination is moved to
 `<name>.bak.<timestamp>` rather than overwritten.
 
 Two manual steps remain:
@@ -44,12 +44,8 @@ bat cache --build          # register the bat theme
 [zoxide](https://github.com/ajeetdsouza/zoxide),
 [fastfetch](https://github.com/fastfetch-cli/fastfetch).
 
-The zsh plugins are cloned separately into `~/.zsh/`:
-
-```sh
-git clone https://github.com/zsh-users/zsh-autosuggestions ~/.zsh/zsh-autosuggestions
-git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.zsh/zsh-syntax-highlighting
-```
+Vim and zsh plugins are cloned by `install.sh` and are not listed here; the
+tables at the top of that script are the authoritative list.
 
 ## Notes
 

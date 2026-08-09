@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Symlink the configs in this repo into $HOME and fetch the vim plugins.
+# Symlink the configs in this repo into $HOME and fetch the vim and zsh plugins.
 # Idempotent: re-running reports what is already in place and changes nothing.
 # Anything already at a destination is backed up rather than overwritten.
 
@@ -22,10 +22,47 @@ LINKS=(
 
 # url:group/name pairs. Vim plugins are separate git repos, so they are cloned
 # at install time rather than vendored here. Vim 8+ loads anything under
-# ~/.vim/pack/*/start/ automatically.
+# ~/.vim/pack/*/start/ automatically. The group is cosmetic to vim and only
+# separates the colorscheme from the plugins vimrc configures.
+#
+# Every entry here is referenced by vimrc; dropping one leaves mappings and
+# plugin settings pointing at nothing.
 VIM_PACKS=(
   "https://github.com/sainnhe/gruvbox-material.git:themes/gruvbox-material"
+  "https://github.com/ctrlpvim/ctrlp.vim.git:plugins/ctrlp.vim"
+  "https://github.com/mileszs/ack.vim.git:plugins/ack.vim"
+  "https://github.com/preservim/nerdtree.git:plugins/nerdtree"
+  "https://github.com/easymotion/vim-easymotion.git:plugins/vim-easymotion"
 )
+
+# Cloned into ~/.zsh/<name>, where zshrc sources each one by path. Unlike vim
+# packages these are not autoloaded, so the order zshrc sources them in is what
+# matters, not the order here.
+ZSH_PLUGINS=(
+  "https://github.com/zsh-users/zsh-autosuggestions.git"
+  "https://github.com/zsh-users/zsh-syntax-highlighting.git"
+)
+
+# Clone $1 into $2 unless a git repo is already there. A non-repo sitting at the
+# destination is left untouched and reported: unlike the symlink targets below
+# it could be an unrelated directory, so moving it aside is not obviously safe.
+clone_repo() {
+  local url="$1" path="$2"
+
+  if [ -d "$path/.git" ]; then
+    echo "already installed: $path"
+    return
+  fi
+
+  if [ -e "$path" ]; then
+    echo "not a git repo, skipping: $path (remove it to install $url)" >&2
+    return
+  fi
+
+  mkdir -p "$(dirname "$path")"
+  git clone --depth 1 "$url" "$path"
+  echo "cloned $url -> $path"
+}
 
 for entry in "${LINKS[@]}"; do
   src="${entry%%:*}"
@@ -58,14 +95,12 @@ for entry in "${VIM_PACKS[@]}"; do
   spec="${entry##*:}"
   group="${spec%%/*}"
   name="${spec##*/}"
-  path="$HOME/.vim/pack/$group/start/$name"
 
-  if [ -d "$path/.git" ]; then
-    echo "already installed: $path"
-    continue
-  fi
+  clone_repo "$url" "$HOME/.vim/pack/$group/start/$name"
+done
 
-  mkdir -p "$(dirname "$path")"
-  git clone --depth 1 "$url" "$path"
-  echo "cloned $url -> $path"
+for url in "${ZSH_PLUGINS[@]}"; do
+  name="$(basename "$url" .git)"
+
+  clone_repo "$url" "$HOME/.zsh/$name"
 done
