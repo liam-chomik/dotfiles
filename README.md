@@ -12,6 +12,7 @@ Dark across every tool.
 | `vimrc` | `~/.vimrc` | Vim: statusline, persistent undo, WSL clipboard bridge |
 | `gitconfig` | `~/.gitconfig` | Git: aliases, diff and log formatting, safety defaults |
 | `gitignore_global` | `~/.gitignore_global` | Editor, OS, and credential patterns ignored in every repo |
+| `inputrc` | `~/.inputrc` | Readline: bash, Python REPL, gdb, sqlite3, psql |
 | `starship.toml` | `~/.config/starship.toml` | Prompt |
 | `tmux/tmux.conf` | `~/.config/tmux/` | tmux: mouse, vi copy mode, status bar |
 | `bat/themes/` | `~/.config/bat/` | `bat` syntax theme |
@@ -80,9 +81,9 @@ tmux 3.2 is the floor because `terminal-features` replaced the older
 
 Optional, each degrading rather than breaking:
 [fd](https://github.com/sharkdp/fd) and
-[ripgrep](https://github.com/BurntSushi/ripgrep) back fzf's file walk, falling
-back to fzf's own walk without them. Debian packages fd as `fdfind`, which is
-the name `zshrc` looks for.
+[ripgrep](https://github.com/BurntSushi/ripgrep) back fzf's file walk and vim's
+`:grep`, falling back to fzf's own walk and system grep without them. Debian
+packages fd as `fdfind`, which is the name `zshrc` looks for.
 
 Vim and zsh plugins are cloned by `install.sh` and are not listed here; the
 tables at the top of that script are the authoritative list.

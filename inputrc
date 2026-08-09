@@ -1,0 +1,35 @@
+# ~/.inputrc
+# Readline configuration. Governs every program linked against readline, which
+# the zsh config does not reach: bash, the Python REPL, gdb, sqlite3, psql.
+
+set editing-mode vi
+
+set completion-ignore-case on
+set show-all-if-ambiguous on      # list candidates on the first Tab, not the second
+set show-all-if-unmodified on     # and do so without requiring another keystroke
+set colored-stats on              # colour completions by file type
+set colored-completion-prefix on
+set mark-symlinked-directories on # append / to a symlink that resolves to a directory
+set bell-style none
+
+# Alt+Left and Alt+Right move by word, matching the terminal's other bindings.
+"\e[1;3C": forward-word
+"\e[1;3D": backward-word
+
+# History search on the current prefix rather than the whole list.
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# vi insert mode drops the line-editing keys that are muscle memory from every
+# other shell, so put back the ones with no vi equivalent worth switching for.
+$if mode=vi
+set show-mode-in-prompt on
+"\C-a": beginning-of-line
+"\C-e": end-of-line
+"\C-l": clear-screen
+"\C-p": previous-history
+"\C-n": next-history
+"\C-w": backward-kill-word
+"\C-r": reverse-search-history
+"\e.":  yank-last-arg
+$endif

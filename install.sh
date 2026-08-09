@@ -15,6 +15,7 @@ LINKS=(
   "vimrc:.vimrc"
   "gitconfig:.gitconfig"
   "gitignore_global:.gitignore_global"
+  "inputrc:.inputrc"
   "starship.toml:.config/starship.toml"
   "tmux:.config/tmux"
   "bat:.config/bat"
