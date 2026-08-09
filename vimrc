@@ -17,7 +17,6 @@ let g:gruvbox_material_diagnostic_text_highlight = 1
 colorscheme gruvbox-material
 
 set number relativenumber         " absolute on the cursor line, relative elsewhere
-set cursorline
 set signcolumn=yes                " always reserve the gutter so text does not shift
 set showcmd
 set noshowmode                    " the statusline reports the mode
@@ -31,6 +30,14 @@ set listchars=tab:→\ ,trail:·,nbsp:␣,extends:>,precedes:<
 set fillchars=vert:│,fold:·
 set shortmess+=I                  " skip the intro screen
 
+" Cursorline in the focused window only, so a split layout has one highlighted
+" row rather than one per window.
+augroup cursorline_active_window
+  autocmd!
+  autocmd VimEnter,WinEnter,BufWinEnter * setlocal cursorline
+  autocmd WinLeave * setlocal nocursorline
+augroup END
+
 " Cursor shape per mode: bar in insert, underline in replace, block in normal.
 let &t_SI = "\<Esc>[6 q"
 let &t_SR = "\<Esc>[4 q"
@@ -39,7 +46,14 @@ let &t_EI = "\<Esc>[2 q"
 " --- Behavior ---
 set encoding=utf-8
 set fileencoding=utf-8
+
+" Modelines apply options written inside a file to the session that opens it,
+" untrusted files included, and the sandbox meant to contain them has been
+" escaped repeatedly, up to remote code execution. Disabled rather than
+" whitelisted, so there is no boundary left to escape.
+set nomodeline
 set mouse=a                       " Shift bypasses this for native terminal selection
+set belloff=all                   " covers the non-error bells 'noerrorbells' leaves ringing
 set hidden                        " allow switching away from unsaved buffers
 set confirm                       " prompt instead of failing on unsaved changes
 set autoread
@@ -49,6 +63,17 @@ set updatetime=300
 set history=1000
 set splitbelow splitright
 set nostartofline
+set nojoinspaces                  " one space after a period when joining, not two
+set lazyredraw                    " skip redrawing while a macro or mapping runs
+set synmaxcol=500                 " stop highlighting past this column, so minified
+                                  " and generated files stay responsive
+set formatoptions+=j              " drop the comment leader when joining commented lines
+set formatoptions+=n              " recognize numbered lists when formatting
+
+" Diffs, matching diff.algorithm in gitconfig so vimdiff and git agree.
+set diffopt+=algorithm:histogram
+set diffopt+=indent-heuristic
+set diffopt+=iwhite               " ignore whitespace-only changes
 
 " Command-line completion
 set wildmenu
@@ -129,6 +154,12 @@ augroup restore_cursor
         \ | execute "normal! g`\"" | endif
 augroup END
 
+" Conflict and reject leftovers are tool output, not sources to edit.
+augroup readonly_artifacts
+  autocmd!
+  autocmd BufRead *.orig,*.rej setlocal readonly nomodifiable
+augroup END
+
 " Briefly highlight yanked text
 augroup highlight_yank
   autocmd!
@@ -190,6 +221,8 @@ let g:netrw_altv = 1
 " ctrlp.vim: fuzzy finder over files, buffers and MRU.
 let g:ctrlp_working_path_mode = 'ra' " root at the nearest ancestor holding .git
 let g:ctrlp_show_hidden = 1
+" Open the selection here rather than jumping to a window already showing it.
+let g:ctrlp_switch_buffer = 0
 " ripgrep honours .gitignore and is fast enough that caching only adds staleness.
 if executable('rg')
   let g:ctrlp_user_command = 'rg --files --hidden --glob "!.git/*" %s'
@@ -241,6 +274,10 @@ let g:ctrlp_status_func = {
 " ack-grep is installed, so ripgrep is pointed at it in their place.
 if executable('rg')
   let g:ackprg = 'rg --vimgrep --smart-case'
+  " The builtin :grep otherwise shells out to system grep, which walks
+  " .git and ignores .gitignore.
+  set grepprg=rg\ --no-heading\ --vimgrep
+  set grepformat=%f:%l:%c:%m
 endif
 let g:ack_use_cword_for_empty_search = 1
 
@@ -263,6 +300,53 @@ augroup END
 " that leads nowhere. The plugin expands this after mapleader is set.
 let g:EasyMotion_leader_key = '<Leader>m'
 let g:EasyMotion_smartcase = 1
+" Uppercase labels stand out against surrounding lowercase text; they are still
+" typed in lowercase.
+let g:EasyMotion_use_upper = 1
+let g:EasyMotion_keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ;'
+
+" Vim's bundled markdown syntax highlights fenced blocks only for the languages
+" named here, and conceals link and emphasis markup unless told otherwise.
+let g:markdown_fenced_languages = [
+      \ 'bash=sh',
+      \ 'c',
+      \ 'cpp',
+      \ 'json',
+      \ 'python',
+      \ 'rust',
+      \ 'vim',
+      \ 'yaml',
+      \ ]
+let g:markdown_syntax_conceal = 0
+
+" --- Functions ---
+
+" Run a register's macro over every line of a visual selection. Applying a macro
+" with a count stops at the first line where it fails; this does not. Mapped in
+" the key mappings section below.
+function! s:MacroOverVisualRange() abort
+  echo '@' . getcmdline()
+  execute ":'<,'>normal @" . nr2char(getchar())
+endfunction
+
+" Expand one window to fill the tab and restore the previous layout on the next
+" call, the equivalent of tmux's prefix-z. winrestcmd() returns the :resize
+" commands that rebuild the current layout, so restoring is replaying them.
+" Leaving the zoomed window unzooms, otherwise the stored layout goes stale.
+function! s:ToggleZoom(explicit) abort
+  if exists('t:zoom_restore') && (t:zoom_restore.win != winnr() || a:explicit)
+    execute t:zoom_restore.cmd
+    unlet t:zoom_restore
+  elseif a:explicit
+    let t:zoom_restore = { 'win': winnr(), 'cmd': winrestcmd() }
+    vertical resize | resize
+  endif
+endfunction
+
+augroup restore_zoom
+  autocmd!
+  autocmd WinEnter * silent! call s:ToggleZoom(v:false)
+augroup END
 
 " --- Statusline ---
 let s:stl_modes = {
@@ -331,6 +415,14 @@ call s:StatuslineHighlights()
 let mapleader = " "
 let maplocalleader = " "
 
+" Q drops into Ex mode, which is reached far more often by mistyping :q than on
+" purpose. gQ still gets there.
+nnoremap Q <Nop>
+
+" Write a file opened without the privileges to save it, by piping the buffer
+" through tee instead of letting the edit be lost.
+command! -nargs=0 Sudow write !sudo tee % >/dev/null
+
 " Files
 nnoremap <leader>w :write<CR>
 nnoremap <leader>q :quit<CR>
@@ -344,6 +436,9 @@ nnoremap <leader>A :Ack!<CR>
 
 " Clear search highlight
 nnoremap <silent> <leader><Space> :nohlsearch<CR>
+
+" Zoom the current window to fill the tab, and back
+nnoremap <silent> <leader>z :call <SID>ToggleZoom(v:true)<CR>
 
 " System clipboard
 nnoremap <leader>y "+y
@@ -368,8 +463,15 @@ nnoremap <silent> <Right> :vertical resize +2<CR>
 " Keep the cursor centered when jumping through search results and half-pages
 nnoremap n nzzzv
 nnoremap N Nzzzv
+nnoremap <silent> *  *zz
+nnoremap <silent> #  #zz
+nnoremap <silent> g* g*zz
 nnoremap <C-d> <C-d>zz
 nnoremap <C-u> <C-u>zz
+" A terminal sends the same byte for <C-i> and <Tab>, so this remaps normal-mode
+" <Tab> too. That key is already jump-forward, so the behaviour is unchanged.
+nnoremap <C-o> <C-o>zz
+nnoremap <C-i> <C-i>zz
 
 " Keep the selection after shifting, allowing repeated indent
 xnoremap < <gv
@@ -379,7 +481,11 @@ xnoremap > >gv
 xnoremap J :move '>+1<CR>gv=gv
 xnoremap K :move '<-2<CR>gv=gv
 
+" Apply a macro to every line of the selection
+xnoremap @ :<C-u>call <SID>MacroOverVisualRange()<CR>
+
 " Buffer switching
+nnoremap <leader>bb <C-^>
 nnoremap <leader>bn :bnext<CR>
 nnoremap <leader>bp :bprevious<CR>
 nnoremap <leader>bd :bdelete<CR>
