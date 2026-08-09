@@ -8,11 +8,19 @@ DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # source:dest pairs, relative to $DOTFILES and $HOME respectively.
 LINKS=(
   "zshrc:.zshrc"
+  "vimrc:.vimrc"
   "starship.toml:.config/starship.toml"
   "tmux:.config/tmux"
   "bat:.config/bat"
   "eza:.config/eza"
   "fastfetch:.config/fastfetch"
+)
+
+# Vim plugins are their own git repos, so they're cloned rather than committed
+# here (a nested checkout inside this repo would be a submodule headache).
+# Anything under ~/.vim/pack/*/start/ is loaded automatically by Vim 8+.
+VIM_PACKS=(
+  "https://github.com/sainnhe/gruvbox-material.git:themes/gruvbox-material"
 )
 
 for entry in "${LINKS[@]}"; do
@@ -39,4 +47,21 @@ for entry in "${LINKS[@]}"; do
 
   ln -s "$src_path" "$dest_path"
   echo "linked $dest_path -> $src_path"
+done
+
+for entry in "${VIM_PACKS[@]}"; do
+  url="${entry%:*}"          # trailing field is group/name, so cut at the LAST colon
+  spec="${entry##*:}"        # e.g. "themes/gruvbox-material"
+  group="${spec%%/*}"        # "themes"
+  name="${spec##*/}"         # "gruvbox-material"
+  path="$HOME/.vim/pack/$group/start/$name"
+
+  if [ -d "$path/.git" ]; then
+    echo "already installed: $path"
+    continue
+  fi
+
+  mkdir -p "$(dirname "$path")"
+  git clone --depth 1 "$url" "$path"
+  echo "cloned $url -> $path"
 done

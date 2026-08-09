@@ -1,0 +1,298 @@
+" ~/.vimrc
+" Vim configuration for WSL2. Theme: Gruvbox Material Dark.
+
+set nocompatible
+filetype plugin indent on
+syntax enable
+
+" --- Appearance ---
+set termguicolors
+set background=dark
+
+let g:gruvbox_material_background = 'medium'        " bg0 = #282828
+let g:gruvbox_material_foreground = 'material'
+let g:gruvbox_material_better_performance = 1
+let g:gruvbox_material_enable_italic = 1
+let g:gruvbox_material_diagnostic_text_highlight = 1
+colorscheme gruvbox-material
+
+set number relativenumber         " absolute on the cursor line, relative elsewhere
+set cursorline
+set signcolumn=yes                " always reserve the gutter so text does not shift
+set showcmd
+set noshowmode                    " the statusline reports the mode
+set laststatus=2
+set scrolloff=8
+set sidescrolloff=8
+set nowrap
+set linebreak                     " break at word boundaries when wrap is enabled
+set list
+set listchars=tab:→\ ,trail:·,nbsp:␣,extends:>,precedes:<
+set fillchars=vert:│,fold:·
+set shortmess+=I                  " skip the intro screen
+
+" Cursor shape per mode: bar in insert, underline in replace, block in normal.
+let &t_SI = "\<Esc>[6 q"
+let &t_SR = "\<Esc>[4 q"
+let &t_EI = "\<Esc>[2 q"
+
+" --- Behavior ---
+set encoding=utf-8
+set fileencoding=utf-8
+set mouse=a                       " Shift bypasses this for native terminal selection
+set hidden                        " allow switching away from unsaved buffers
+set confirm                       " prompt instead of failing on unsaved changes
+set autoread
+set backspace=indent,eol,start
+set ttimeoutlen=10                " no delay when leaving insert mode
+set updatetime=300
+set history=1000
+set splitbelow splitright
+set nostartofline
+
+" Command-line completion
+set wildmenu
+set wildmode=longest:full,full
+set wildignorecase
+set wildignore+=*.o,*.obj,*.pyc,*.class,*/node_modules/*,*/.git/*
+
+set path+=**                      " :find searches recursively from cwd
+
+" --- Search ---
+set incsearch
+set hlsearch
+set ignorecase
+set smartcase                     " case-sensitive when the pattern contains a capital
+set gdefault                      " :s replaces every match on a line by default
+
+" --- Indentation ---
+set expandtab
+set tabstop=4
+set softtabstop=4
+set shiftwidth=4
+set shiftround                    " round indent to a multiple of shiftwidth
+set autoindent
+set smartindent
+
+augroup indent_overrides
+  autocmd!
+  autocmd FileType html,css,scss,javascript,typescript,json,yaml,lua,vim
+        \ setlocal tabstop=2 softtabstop=2 shiftwidth=2
+  autocmd FileType make,go setlocal noexpandtab
+  autocmd FileType markdown,text,gitcommit setlocal wrap spell spelllang=en_us
+  autocmd FileType gitcommit setlocal textwidth=72
+augroup END
+
+" --- Persistent state ---
+" Kept out of the working directory. Mode 0700 because undo files hold the
+" complete edit history of every file opened, including sensitive ones.
+for s:dir in ['undo', 'swap', 'backup']
+  let s:path = expand('~/.vim/' . s:dir)
+  if !isdirectory(s:path)
+    call mkdir(s:path, 'p', 0700)
+  endif
+endfor
+unlet! s:dir s:path
+
+set undofile
+set undodir=~/.vim/undo//
+set undolevels=1000
+set directory=~/.vim/swap//
+set nobackup
+set writebackup                   " temporary backup during write, removed after
+set backupdir=~/.vim/backup//
+set viminfofile=~/.vim/viminfo
+
+" Vim copies the edited file's permissions onto its undo file, and files on the
+" Windows mount report 0777, which would leave edit history world-readable.
+" Swap and backup files inherit the same way but are transient, so the 0700
+" directory stays their only control.
+function! s:HardenUndoFile() abort
+  if !&undofile || empty(expand('%'))
+    return
+  endif
+  let l:undo = undofile(expand('%:p'))
+  if filereadable(l:undo)
+    call setfperm(l:undo, 'rw-------')
+  endif
+endfunction
+
+augroup harden_undo_perms
+  autocmd!
+  autocmd BufWritePost * call s:HardenUndoFile()
+augroup END
+
+" Restore the last cursor position
+augroup restore_cursor
+  autocmd!
+  autocmd BufReadPost * if line("'\"") >= 1 && line("'\"") <= line("$") && &ft !~# 'commit'
+        \ | execute "normal! g`\"" | endif
+augroup END
+
+" Briefly highlight yanked text
+augroup highlight_yank
+  autocmd!
+  autocmd TextYankPost * silent! call matchadd('IncSearch', '\%'.line("'[").'l\%>'.(col("'[")-1).'c\%<'.(col("']")+1).'c', 10, 9999)
+        \ | redraw | sleep 120m | silent! call matchdelete(9999)
+augroup END
+
+" --- Clipboard bridge (WSL to Windows) ---
+" Debian's vim is built without +clipboard, so the "+ and "* registers are
+" supplied through +clipboard_provider. This is Vim's API, not Neovim's: it
+" takes v:clipproviders with Vimscript callbacks plus a 'clipmethod' entry, and
+" ignores a g:clipboard dict silently.
+"
+" clipboard=unnamedplus is avoided so routine deletes do not each spawn
+" clip.exe at roughly 70ms per call.
+if exists('v:clipproviders')
+
+  func! s:WslClipAvailable() abort
+    return executable('clip.exe') && executable('powershell.exe')
+  endfunc
+
+  " reg is "+ or "*, type is a getregtype() value, lines is a list of strings.
+  func! s:WslClipCopy(reg, type, lines) abort
+    let l:text = join(a:lines, "\r\n")
+    if a:type ==# 'V'
+      let l:text .= "\r\n"
+    endif
+    call system('clip.exe', l:text)
+  endfunc
+
+  " Returns [regtype, lines]. An empty regtype lets Vim choose.
+  func! s:WslClipPaste(reg) abort
+    let l:raw = system('powershell.exe -NoProfile -NoLogo -Command "Get-Clipboard -Raw"')
+    let l:raw = substitute(l:raw, "\r", '', 'g')
+    let l:raw = substitute(l:raw, "\n$", '', '')   " -Raw appends one newline
+    return ['', split(l:raw, "\n", 1)]
+  endfunc
+
+  let v:clipproviders['wsl'] = {
+        \   'available': function('s:WslClipAvailable'),
+        \   'copy':  {'+': function('s:WslClipCopy'),  '*': function('s:WslClipCopy')},
+        \   'paste': {'+': function('s:WslClipPaste'), '*': function('s:WslClipPaste')},
+        \ }
+  set clipmethod^=wsl
+endif
+
+" --- netrw ---
+let g:netrw_banner = 0
+let g:netrw_liststyle = 3         " tree view
+let g:netrw_winsize = 22
+let g:netrw_altv = 1
+
+" --- Statusline ---
+let s:stl_modes = {
+      \ 'n':      ['NORMAL',  'StlNormal'],
+      \ 'no':     ['PENDING', 'StlNormal'],
+      \ 'i':      ['INSERT',  'StlInsert'],
+      \ 'ic':     ['INSERT',  'StlInsert'],
+      \ 'v':      ['VISUAL',  'StlVisual'],
+      \ 'V':      ['V-LINE',  'StlVisual'],
+      \ "\<C-v>": ['V-BLOCK', 'StlVisual'],
+      \ 's':      ['SELECT',  'StlVisual'],
+      \ 'S':      ['S-LINE',  'StlVisual'],
+      \ 'R':      ['REPLACE', 'StlReplace'],
+      \ 'Rv':     ['V-REPL',  'StlReplace'],
+      \ 'c':      ['COMMAND', 'StlCommand'],
+      \ 'cv':     ['EX',      'StlCommand'],
+      \ 'r':      ['PROMPT',  'StlCommand'],
+      \ 't':      ['TERMINAL','StlCommand'],
+      \ }
+
+function! StlMode() abort
+  let l:e = get(s:stl_modes, mode(), [toupper(mode()), 'StlNormal'])
+  return '%#' . l:e[1] . '# ' . l:e[0] . ' %#StlFile# '
+endfunction
+
+" Path relative to cwd or ~, abbreviated past 45 characters so the mode
+" indicator is never truncated off the front of the line.
+function! StlPath() abort
+  let l:p = expand('%:~:.')
+  if empty(l:p)
+    return '[No Name]'
+  endif
+  return strlen(l:p) > 45 ? pathshorten(l:p) : l:p
+endfunction
+
+" Assigned as a single string; 'set statusline+=' requires escaping every space.
+let &statusline =
+      \   '%{%StlMode()%}'
+      \ . '%{StlPath()} %m%r%h%w'
+      \ . '%#StlFill#%='
+      \ . '%#StlInfo# %{&filetype ==# "" ? "none" : &filetype} '
+      \ . '%#StlInfo#%{&fileencoding ==# "" ? &encoding : &fileencoding} '
+      \ . '%#StlPos# %l:%c  %p%% '
+
+" Gruvbox Material palette, reapplied on ColorScheme so the groups survive a
+" :colorscheme change.
+function! s:StatuslineHighlights() abort
+  highlight StlNormal  guibg=#a9b665 guifg=#282828 gui=bold cterm=bold
+  highlight StlInsert  guibg=#7daea3 guifg=#282828 gui=bold cterm=bold
+  highlight StlVisual  guibg=#d3869b guifg=#282828 gui=bold cterm=bold
+  highlight StlReplace guibg=#ea6962 guifg=#282828 gui=bold cterm=bold
+  highlight StlCommand guibg=#d8a657 guifg=#282828 gui=bold cterm=bold
+  highlight StlFile    guibg=#45403d guifg=#d4be98 gui=NONE   cterm=NONE
+  highlight StlFill    guibg=#32302f guifg=#7c6f64 gui=NONE   cterm=NONE
+  highlight StlInfo    guibg=#45403d guifg=#d4be98 gui=NONE   cterm=NONE
+  highlight StlPos     guibg=#89b482 guifg=#282828 gui=bold cterm=bold
+endfunction
+
+augroup statusline_colors
+  autocmd!
+  autocmd ColorScheme * call s:StatuslineHighlights()
+augroup END
+call s:StatuslineHighlights()
+
+" --- Key mappings ---
+let mapleader = " "
+let maplocalleader = " "
+
+" Files
+nnoremap <leader>w :write<CR>
+nnoremap <leader>q :quit<CR>
+nnoremap <leader>e :Lexplore<CR>
+nnoremap <leader>f :find<Space>
+
+" Clear search highlight
+nnoremap <silent> <leader><Space> :nohlsearch<CR>
+
+" System clipboard
+nnoremap <leader>y "+y
+nnoremap <leader>Y "+y$
+xnoremap <leader>y "+y
+nnoremap <leader>p "+p
+nnoremap <leader>P "+P
+xnoremap <leader>p "+p
+
+" Window navigation
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+" Resize windows with arrows
+nnoremap <silent> <Up>    :resize +2<CR>
+nnoremap <silent> <Down>  :resize -2<CR>
+nnoremap <silent> <Left>  :vertical resize -2<CR>
+nnoremap <silent> <Right> :vertical resize +2<CR>
+
+" Keep the cursor centered when jumping through search results and half-pages
+nnoremap n nzzzv
+nnoremap N Nzzzv
+nnoremap <C-d> <C-d>zz
+nnoremap <C-u> <C-u>zz
+
+" Keep the selection after shifting, allowing repeated indent
+xnoremap < <gv
+xnoremap > >gv
+
+" Move the selected lines up and down
+xnoremap J :move '>+1<CR>gv=gv
+xnoremap K :move '<-2<CR>gv=gv
+
+" Buffer switching
+nnoremap <leader>bn :bnext<CR>
+nnoremap <leader>bp :bprevious<CR>
+nnoremap <leader>bd :bdelete<CR>
+nnoremap <leader>bl :buffers<CR>:buffer<Space>

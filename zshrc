@@ -3,6 +3,10 @@
 # --- PATH ---
 export PATH="$HOME/.local/bin:$PATH"
 
+# --- default editor (git commit messages, crontab, less -v, etc.) ---
+export EDITOR="vim"
+export VISUAL="vim"
+
 # --- history ---
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
