@@ -66,13 +66,17 @@ the tracked configs set.
 
 ## Dependencies
 
-`zsh`, `vim` 9.1+, `tmux` 3.x, `git`, and
+`zsh`, `vim` 9.1+, `tmux` 3.2+, `git`, and
 [starship](https://starship.rs),
 [eza](https://github.com/eza-community/eza),
 [bat](https://github.com/sharkdp/bat),
 [fzf](https://github.com/junegunn/fzf),
 [zoxide](https://github.com/ajeetdsouza/zoxide),
 [fastfetch](https://github.com/fastfetch-cli/fastfetch).
+
+tmux 3.2 is the floor because `terminal-features` replaced the older
+`terminal-overrides` mechanism there; vim 9.1 because the clipboard bridge uses
+`v:clipproviders`.
 
 Optional, each degrading rather than breaking:
 [fd](https://github.com/sharkdp/fd) and
