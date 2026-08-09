@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # Weekly, so an upstream plugin repo disappearing or renaming its default
+    # branch surfaces here rather than during the next fresh install.
+    - cron: '0 8 * * 6'
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tilde expands against the runner's real home before HOME is
+      # reassigned for the command, so the throwaway tree lands somewhere real.
+      - name: Install into a throwaway home
+        run: |
+          mkdir -p ~/dotfiles-install-dir
+          HOME=~/dotfiles-install-dir ./install.sh
+
+      # ln -s happily creates a link to a path that does not exist, so a typo in
+      # the LINKS array or a deleted source file installs cleanly and only fails
+      # when something tries to read the target.
+      - name: Check no symlink dangles
+        run: |
+          cd ~/dotfiles-install-dir
+          find . -maxdepth 3 -type l -print0 \
+            | xargs -0 -I{} sh -c 'test -e "{}" || { echo "dangling: {}" >&2; exit 1; }'
+
+      - name: Check every plugin the configs reference was installed
+        run: |
+          cd ~/dotfiles-install-dir
+          for p in .vim/pack/themes/start/gruvbox-material \
+                   .vim/pack/plugins/start/ctrlp.vim \
+                   .vim/pack/plugins/start/ack.vim \
+                   .vim/pack/plugins/start/nerdtree \
+                   .vim/pack/plugins/start/vim-easymotion \
+                   .zsh/zsh-autosuggestions \
+                   .zsh/zsh-syntax-highlighting; do
+            test -d "$p/.git" || { echo "missing: $p" >&2; exit 1; }
+          done
+
+      # install.sh documents itself as idempotent; a second run proves it.
+      - name: Re-run to confirm idempotency
+        run: |
+          HOME=~/dotfiles-install-dir ./install.sh | tee /tmp/second-run
+          ! grep -q 'backing up' /tmp/second-run
+
+      - name: Check the shell config parses
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh
+          zsh -n zshrc
