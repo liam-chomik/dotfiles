@@ -176,10 +176,93 @@ if exists('v:clipproviders')
 endif
 
 " --- netrw ---
+" Kept configured as a fallback: NERDTree owns the <leader>e mapping, but
+" :Lexplore and directory buffers still route here.
 let g:netrw_banner = 0
 let g:netrw_liststyle = 3         " tree view
 let g:netrw_winsize = 22
 let g:netrw_altv = 1
+
+" --- Plugins ---
+" Installed as native packages under ~/.vim/pack/plugins/start. Those load
+" after this file is sourced, so the g: variables below are read in time.
+
+" ctrlp.vim: fuzzy finder over files, buffers and MRU.
+let g:ctrlp_working_path_mode = 'ra' " root at the nearest ancestor holding .git
+let g:ctrlp_show_hidden = 1
+" ripgrep honours .gitignore and is fast enough that caching only adds staleness.
+if executable('rg')
+  let g:ctrlp_user_command = 'rg --files --hidden --glob "!.git/*" %s'
+  let g:ctrlp_use_caching = 0
+endif
+
+" The stock statusline spells its mode slider in ASCII (<mru>={files}=<buf>),
+" which a ligature font fuses into unrelated glyphs. This replacement shows the
+" active mode and the search root unconditionally, and the remaining state only
+" while it differs from the default. Both functions must be global: ctrlp calls
+" them by name from its own script scope, where s: names do not resolve.
+" Highlight groups are shared with the main statusline so the two bars match.
+function! CtrlPStatusMain(focus, byfname, regex, prev, item, next, marked) abort
+  let l:flags = []
+  if a:byfname ==# 'file'
+    call add(l:flags, 'filename')
+  endif
+  if a:regex
+    call add(l:flags, 'regex')
+  endif
+  " ctrlp preformats this argument, passing ' <->' when the selection is empty.
+  if a:marked !=# ' <->'
+    call add(l:flags, trim(a:marked, ' <>') . ' marked')
+  endif
+
+  let l:dir = fnamemodify(getcwd(), ':~')
+  if strlen(l:dir) > 45
+    let l:dir = pathshorten(l:dir)
+  endif
+
+  return '%#StlNormal# ' . a:item . ' '
+        \ . (empty(l:flags) ? '' : '%#StlFile# ' . join(l:flags, ', ') . ' ')
+        \ . '%#StlFill#%='
+        \ . '%#StlPos# ' . l:dir . ' '
+endfunction
+
+" Second statusline, shown while the file list is still being scanned.
+function! CtrlPStatusProg(str) abort
+  return '%#StlCommand# scanning %#StlFile# ' . a:str . ' %#StlFill#%='
+endfunction
+
+let g:ctrlp_status_func = {
+      \   'main': 'CtrlPStatusMain',
+      \   'prog': 'CtrlPStatusProg',
+      \ }
+
+" ack.vim: project-wide search into the quickfix list. The plugin aborts at
+" load time unless g:ackprg names an available binary, and neither ack nor
+" ack-grep is installed, so ripgrep is pointed at it in their place.
+if executable('rg')
+  let g:ackprg = 'rg --vimgrep --smart-case'
+endif
+let g:ack_use_cword_for_empty_search = 1
+
+" nerdtree: file explorer.
+let g:NERDTreeWinSize = 30
+let g:NERDTreeShowHidden = 1
+let g:NERDTreeMinimalUI = 1
+" Do not let a lone explorer pane hold the session open.
+augroup nerdtree_last_window
+  autocmd!
+  autocmd BufEnter * if winnr('$') == 1 && exists('b:NERDTree')
+        \ && b:NERDTree.isTabTree() | quit | endif
+augroup END
+
+" vim-easymotion: jump to any visible position by typing a target label.
+" The default <Leader><Leader> prefix collides with the <leader><Space>
+" nohlsearch mapping. g:EasyMotion_leader_key relocates it while keeping
+" do_mapping on, which is what defines the per-motion maps hanging off the
+" prefix. Turning do_mapping off would suppress those too, leaving a prefix
+" that leads nowhere. The plugin expands this after mapleader is set.
+let g:EasyMotion_leader_key = '<Leader>m'
+let g:EasyMotion_smartcase = 1
 
 " --- Statusline ---
 let s:stl_modes = {
@@ -251,8 +334,13 @@ let maplocalleader = " "
 " Files
 nnoremap <leader>w :write<CR>
 nnoremap <leader>q :quit<CR>
-nnoremap <leader>e :Lexplore<CR>
+nnoremap <leader>e :NERDTreeToggle<CR>
 nnoremap <leader>f :find<Space>
+
+" Project search. The bang leaves the cursor in the current window rather than
+" jumping to the first match. An empty pattern searches the word under the cursor.
+nnoremap <leader>a :Ack!<Space>
+nnoremap <leader>A :Ack!<CR>
 
 " Clear search highlight
 nnoremap <silent> <leader><Space> :nohlsearch<CR>
