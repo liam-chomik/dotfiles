@@ -1,4 +1,5 @@
 # ~/.zshrc
+# Interactive shell configuration. Theme: Gruvbox Material Dark.
 
 # --- PATH ---
 export PATH="$HOME/.local/bin:$PATH"
@@ -52,10 +53,12 @@ fi
 # --- prompt ---
 eval "$(starship init zsh)"
 
-# --- zoxide (interactive only: its precmd hook never fires in a
-#     non-interactive shell, which trips zoxide's own doctor warning) ---
+# --- zoxide (replaces cd) ---
+# Interactive only: the precmd hook never fires otherwise, which zoxide's own
+# doctor check reports as a misconfiguration.
 if [[ $- == *i* ]]; then
   eval "$(zoxide init zsh --cmd cd)"
 fi
 
+# --- Locale ---
 export TZ=America/Argentina/Buenos_Aires

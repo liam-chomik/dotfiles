@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
+#
+# Symlink the configs in this repo into $HOME and fetch the vim plugins.
+# Idempotent: re-running reports what is already in place and changes nothing.
+# Anything already at a destination is backed up rather than overwritten.
+
 set -euo pipefail
 
-# Resolve the directory this script lives in, so it works regardless of
-# where it's invoked from (e.g. `~/dotfiles/install.sh` vs `./install.sh`).
+# Resolve the directory this script lives in, so it runs correctly from any cwd.
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # source:dest pairs, relative to $DOTFILES and $HOME respectively.
@@ -16,9 +20,9 @@ LINKS=(
   "fastfetch:.config/fastfetch"
 )
 
-# Vim plugins are their own git repos, so they're cloned rather than committed
-# here (a nested checkout inside this repo would be a submodule headache).
-# Anything under ~/.vim/pack/*/start/ is loaded automatically by Vim 8+.
+# url:group/name pairs. Vim plugins are separate git repos, so they are cloned
+# at install time rather than vendored here. Vim 8+ loads anything under
+# ~/.vim/pack/*/start/ automatically.
 VIM_PACKS=(
   "https://github.com/sainnhe/gruvbox-material.git:themes/gruvbox-material"
 )
@@ -31,7 +35,7 @@ for entry in "${LINKS[@]}"; do
 
   mkdir -p "$(dirname "$dest_path")"
 
-  # Already correctly linked -> nothing to do. Makes the script idempotent.
+  # Already correctly linked, nothing to do.
   if [ -L "$dest_path" ] && [ "$(readlink "$dest_path")" = "$src_path" ]; then
     echo "already linked: $dest_path"
     continue
@@ -50,10 +54,10 @@ for entry in "${LINKS[@]}"; do
 done
 
 for entry in "${VIM_PACKS[@]}"; do
-  url="${entry%:*}"          # trailing field is group/name, so cut at the LAST colon
-  spec="${entry##*:}"        # e.g. "themes/gruvbox-material"
-  group="${spec%%/*}"        # "themes"
-  name="${spec##*/}"         # "gruvbox-material"
+  url="${entry%:*}"          # cut at the final colon; the url contains one too
+  spec="${entry##*:}"
+  group="${spec%%/*}"
+  name="${spec##*/}"
   path="$HOME/.vim/pack/$group/start/$name"
 
   if [ -d "$path/.git" ]; then

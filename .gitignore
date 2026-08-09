@@ -1,0 +1,8 @@
+# Backups created by install.sh
+*.bak.*
+
+# Editor and OS artifacts
+*.swp
+*.swo
+*~
+.DS_Store
