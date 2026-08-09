@@ -21,7 +21,24 @@ setopt AUTO_CD          # type a dir name to cd into it
 setopt CORRECT          # suggest corrections for mistyped commands
 
 # --- completion ---
-autoload -Uz compinit && compinit
+# Rebuild the dump at most once a day and load the cache otherwise: a full
+# compinit costs ~108ms against ~13ms for compinit -C.
+#
+# Two details this depends on. The glob needs array context, because filename
+# generation does not run inside [[ ]], where the widely posted one-line form
+# tests a literal string and always takes the cached branch. And the explicit
+# touch is required because compinit only rewrites the dump when the
+# completion functions changed, so without it the mtime never advances and
+# every shell takes the slow branch forever.
+autoload -Uz compinit
+_zcompdump_fresh=( ~/.zcompdump(Nmh-24) )
+if (( $#_zcompdump_fresh )); then
+  compinit -C
+else
+  compinit
+  touch ~/.zcompdump
+fi
+unset _zcompdump_fresh
 
 # --- plugins ---
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
