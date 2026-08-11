@@ -47,35 +47,6 @@ success_symbol = "[❯](bold green)"
 error_symbol = "[❯](bold red)"
 vimcmd_symbol = "[❮](bold green)"
 
-[username]
-style_user = "aqua"
-style_root = "bold red"
-format = "[$user]($style) "
-disabled = false
-show_always = false
-
-[hostname]
-style = "muted"
-format = "[@$hostname]($style) "
-ssh_only = true
-disabled = false
-
-[nodejs]
-symbol = " "
-style = "green"
-format = "via [$symbol$version]($style) "
-
-[python]
-symbol = " "
-style = "yellow"
-format = "via [$symbol$version]($style) "
-
-[rust]
-symbol = " "
-style = "red"
-format = "via [$symbol$version]($style) "
-
-[golang]
-symbol = " "
-style = "aqua"
-format = "via [$symbol$version]($style) "
+# Only the modules named in the top-level format render. Configuring a module
+# without adding its variable there has no effect, so a language indicator
+# needs both halves: a [python] table and $python in format.
