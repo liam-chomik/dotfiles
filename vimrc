@@ -160,11 +160,23 @@ augroup readonly_artifacts
   autocmd BufRead *.orig,*.rej setlocal readonly nomodifiable
 augroup END
 
-" Briefly highlight yanked text
+" Briefly highlight yanked text. The highlight is cleared from a timer rather
+" than by sleeping, because 'clipboard' sends every yank and delete through the
+" clipboard provider and a blocking sleep would add its full duration on top.
+function! s:ClearYankHighlight(timer) abort
+  silent! call matchdelete(9999)
+endfunction
+
+function! s:HighlightYank() abort
+  silent! call matchdelete(9999)
+  let l:pat = '\%' . line("'[") . 'l\%>' . (col("'[") - 1) . 'c\%<' . (col("']") + 1) . 'c'
+  silent! call matchadd('IncSearch', l:pat, 10, 9999)
+  call timer_start(150, function('s:ClearYankHighlight'))
+endfunction
+
 augroup highlight_yank
   autocmd!
-  autocmd TextYankPost * silent! call matchadd('IncSearch', '\%'.line("'[").'l\%>'.(col("'[")-1).'c\%<'.(col("']")+1).'c', 10, 9999)
-        \ | redraw | sleep 120m | silent! call matchdelete(9999)
+  autocmd TextYankPost * call s:HighlightYank()
 augroup END
 
 " --- Clipboard bridge (WSL to Windows) ---
@@ -172,38 +184,104 @@ augroup END
 " supplied through +clipboard_provider. This is Vim's API, not Neovim's: it
 " takes v:clipproviders with Vimscript callbacks plus a 'clipmethod' entry, and
 " ignores a g:clipboard dict silently.
-"
-" clipboard=unnamedplus is avoided so routine deletes do not each spawn
-" clip.exe at roughly 70ms per call.
 if exists('v:clipproviders')
 
-  func! s:WslClipAvailable() abort
-    return executable('clip.exe') && executable('powershell.exe')
+  " Backends in preference order, the first whose binary is present winning.
+  " WSLg bridges its Wayland and X11 selections to the Windows clipboard, so a
+  " local helper round-trips in single-digit milliseconds where spawning a
+  " Windows process costs roughly 65ms to copy and 320ms to paste.
+  "
+  " 'eol' joins the lines of a copied register. WSLg converts LF to CRLF itself
+  " when handing a selection to Windows, so only clip.exe is fed CRLF; CRLF sent
+  " through a local helper arrives on the Windows side as CR CR LF.
+  "
+  " Each 'paste' command has to emit the clipboard verbatim, because a trailing
+  " newline is the only thing separating a copied line from a copied word.
+  " wl-paste needs --no-newline, and Get-Clipboard is written through
+  " [Console]::Out.Write because the default pipeline output appends CRLF
+  " unconditionally. That call leaves [Console]::OutputEncoding alone: forcing it
+  " to UTF-8 is the usual advice and it double-encodes, arriving as caf<box>®.
+  let s:clip_backends = [
+        \ {'bin': 'wl-copy',
+        \  'copy': 'wl-copy',
+        \  'paste': 'wl-paste --no-newline',
+        \  'eol': "\n",
+        \  'islocal': v:true},
+        \ {'bin': 'xclip',
+        \  'copy': 'xclip -selection clipboard -in',
+        \  'paste': 'xclip -selection clipboard -out',
+        \  'eol': "\n",
+        \  'islocal': v:true},
+        \ {'bin': 'clip.exe',
+        \  'copy': 'clip.exe',
+        \  'paste': 'powershell.exe -NoProfile -NoLogo -Command "[Console]::Out.Write((Get-Clipboard -Raw))"',
+        \  'eol': "\r\n",
+        \  'islocal': v:false},
+        \ ]
+
+  " Resolved once at startup rather than per call: 'clipboard' below routes every
+  " yank and delete through these callbacks, and executable() walks $PATH.
+  let s:clip_backend = {}
+  for s:candidate in s:clip_backends
+    if executable(s:candidate.bin)
+      let s:clip_backend = s:candidate
+      break
+    endif
+  endfor
+  unlet! s:candidate
+
+  func! s:ClipAvailable() abort
+    return !empty(s:clip_backend)
   endfunc
 
   " reg is "+ or "*, type is a getregtype() value, lines is a list of strings.
-  func! s:WslClipCopy(reg, type, lines) abort
-    let l:text = join(a:lines, "\r\n")
+  func! s:ClipCopy(reg, type, lines) abort
+    let l:text = join(a:lines, s:clip_backend.eol)
     if a:type ==# 'V'
-      let l:text .= "\r\n"
+      let l:text .= s:clip_backend.eol
     endif
-    call system('clip.exe', l:text)
+    call system(s:clip_backend.copy, l:text)
   endfunc
 
-  " Returns [regtype, lines]. An empty regtype lets Vim choose.
-  func! s:WslClipPaste(reg) abort
-    let l:raw = system('powershell.exe -NoProfile -NoLogo -Command "Get-Clipboard -Raw"')
-    let l:raw = substitute(l:raw, "\r", '', 'g')
-    let l:raw = substitute(l:raw, "\n$", '', '')   " -Raw appends one newline
-    return ['', split(l:raw, "\n", 1)]
+  " Returns [regtype, lines]. A trailing newline marks a linewise copy; without
+  " one the text came from inside a line. Returning an empty regtype instead
+  " would leave the choice to Vim, which guesses linewise for a list of strings
+  " and so pastes a copied word onto a line of its own.
+  func! s:ClipPaste(reg) abort
+    let l:raw = substitute(system(s:clip_backend.paste), "\r", '', 'g')
+    if l:raw =~# "\n$"
+      return ['V', split(substitute(l:raw, "\n$", '', ''), "\n", 1)]
+    endif
+    return ['v', split(l:raw, "\n", 1)]
   endfunc
 
-  let v:clipproviders['wsl'] = {
-        \   'available': function('s:WslClipAvailable'),
-        \   'copy':  {'+': function('s:WslClipCopy'),  '*': function('s:WslClipCopy')},
-        \   'paste': {'+': function('s:WslClipPaste'), '*': function('s:WslClipPaste')},
-        \ }
-  set clipmethod^=wsl
+  " Degraded clipboard states are announced rather than left to be discovered by
+  " a yank that silently goes nowhere.
+  func! s:ClipWarn(msg) abort
+    echohl WarningMsg
+    echomsg 'clipboard: ' . a:msg
+    echohl NONE
+  endfunc
+
+  if s:ClipAvailable()
+    let v:clipproviders['wsl'] = {
+          \   'available': function('s:ClipAvailable'),
+          \   'copy':  {'+': function('s:ClipCopy'),  '*': function('s:ClipCopy')},
+          \   'paste': {'+': function('s:ClipPaste'), '*': function('s:ClipPaste')},
+          \ }
+    set clipmethod^=wsl
+
+    " Every yank, delete and change reaches the Windows clipboard, with no leader
+    " prefix needed. Gated on a local backend because the Windows process would
+    " otherwise put its startup cost on each one, including every x and dd.
+    if s:clip_backend.islocal
+      set clipboard=unnamedplus
+    else
+      call s:ClipWarn('no local helper, plain yank stays local (install xclip)')
+    endif
+  else
+    call s:ClipWarn('no backend found, the + and * registers are unavailable')
+  endif
 endif
 
 " --- netrw ---
