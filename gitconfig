@@ -67,16 +67,7 @@
 
 [merge]
 	defaultToUpstream = true
-	tool = vimdiff
 	conflictStyle = zdiff3
-
-[mergetool]
-	keepBackup = false
-
-[rerere]
-	# Record conflict resolutions and replay them, which pays off across a
-	# rebase that hits the same conflict on several commits.
-	enabled = true
 
 [advice]
 	detachedHead = false
@@ -87,45 +78,10 @@
 	# guess after a delay instead of asking.
 	autocorrect = prompt
 
-[url "git@github.com:"]
-	insteadOf = gh:
-
-[pretty]
-	line = "%C(auto)%h %<|(60,trunc)%s %C(green)%ad%C(auto)%d"
-
 [alias]
-	st = status -sb
-	br = branch -vv
-	bra = branch -vv --all
-	co = checkout
-	sw = switch
-	aa = add --all :/
-	ci = commit -v
-	ca = commit --amend -v
-
-	di = diff
-	dis = diff --stat
-	diw = diff --color-words
-	dc = diff --cached
-	dcs = diff --cached --stat
-	dcw = diff --cached --color-words
-
-	f = fetch --tags --prune
-	ff = merge --ff-only
-
 	# Aborts if the remote moved since the last fetch, where --force overwrites
 	# whatever is there. Aliased so the safe form is the one that gets typed.
 	pf = push --force-with-lease
-
-	gr = log --graph --format=line
-	gra = log --graph --format=line --all
-
-	# Absolute path of the repository root, for use in shell expansions.
-	root = rev-parse --show-toplevel
-
-	# Branches by how recently they were committed to, for finding the one that
-	# was being worked on before the interruption.
-	wip = for-each-ref --sort=-authordate:iso8601 --format='%(color:green)%(authordate:relative)%09%(color:reset)%(refname:short)' refs/heads
 
 [include]
 	# Machine-specific settings, including the commit identity. Not tracked.
