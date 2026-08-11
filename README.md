@@ -10,7 +10,7 @@ Dark across every tool.
 | --- | --- | --- |
 | `zshrc` | `~/.zshrc` | Shell: history, completion, plugins, aliases, tool init |
 | `vimrc` | `~/.vimrc` | Vim: statusline, persistent undo, WSL clipboard bridge |
-| `gitconfig` | `~/.gitconfig` | Git: aliases, diff and log formatting, safety defaults |
+| `gitconfig` | `~/.gitconfig` | Git: diff and log formatting, safety defaults |
 | `gitignore_global` | `~/.gitignore_global` | Editor, OS, and credential patterns ignored in every repo |
 | `inputrc` | `~/.inputrc` | Readline: bash, Python REPL, gdb, sqlite3, psql |
 | `starship.toml` | `~/.config/starship.toml` | Prompt |
@@ -83,7 +83,12 @@ Optional, each degrading rather than breaking:
 [fd](https://github.com/sharkdp/fd) and
 [ripgrep](https://github.com/BurntSushi/ripgrep) back fzf's file walk and vim's
 `:grep`, falling back to fzf's own walk and system grep without them. Debian
-packages fd as `fdfind`, which is the name `zshrc` looks for.
+packages fd as `fdfind`, which is the name `zshrc` looks for; `zshrc` aliases
+`fd` back onto it when present.
+
+`xclip` backs the vim clipboard bridge. Without it the bridge falls back to
+`clip.exe`, which costs a Windows process launch per copy and so leaves plain
+yank local rather than routing every yank through it.
 
 Vim and zsh plugins are cloned by `install.sh` and are not listed here; the
 tables at the top of that script are the authoritative list.
