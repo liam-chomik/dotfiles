@@ -8,6 +8,18 @@
 typeset -U path PATH
 export PATH="$HOME/.local/bin:$PATH"
 
+# WSL appends the whole Windows PATH, which lands roughly twenty directories on
+# the 9p mount. Every command lookup and every completion walks them, and 9p
+# makes each stat a round trip: dropping them takes interactive startup from
+# ~0.16s to ~0.11s.
+#
+# system32 is added back because clip.exe lives there, and both the vim
+# clipboard bridge and the tmux copy binding resolve it through $PATH. It is
+# re-added by literal path rather than matched out of the list, so the filter
+# needs no case-insensitive glob for a directory Windows spells inconsistently.
+path=( ${path:#/mnt/c/*} )
+[[ -d /mnt/c/WINDOWS/system32 ]] && path+=( /mnt/c/WINDOWS/system32 )
+
 # --- default editor (git commit messages, crontab, less -v, etc.) ---
 export EDITOR="vim"
 export VISUAL="vim"
