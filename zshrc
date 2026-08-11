@@ -127,51 +127,9 @@ fi
 
 # --- functions ---
 
-# Go up N directories, defaulting to one. Stops at / rather than looping.
-up() {
-  local count="${1:-1}" target="$PWD"
-  if [[ ! "$count" =~ ^[0-9]+$ ]]; then
-    print -u2 "up: argument must be a non-negative integer"
-    return 1
-  fi
-  repeat "$count"; do
-    local parent="${target:h}"
-    [[ "$parent" == "$target" ]] && break
-    target="$parent"
-  done
-  cd "$target"
-}
-
-# Create a directory and enter it.
-mcd() {
-  mkdir -p "$1" && cd "$1"
-}
-
-# Run a command in another directory. The subshell keeps the calling shell's
-# working directory unchanged even if the command fails partway.
-xin() {
-  ( cd "$1" && shift && "$@" )
-}
-
-# Jump to the root of the current repository.
-cdgr() {
-  local root
-  root="$(git rev-parse --show-toplevel)" || return
-  cd "$root"
-}
-
 # Update these dotfiles and reapply them.
 dfu() {
   ( cd ~/dotfiles && git pull --ff-only && ./install.sh )
-}
-
-# Report non-printable characters with their line numbers. Bidirectional
-# overrides and zero-width joiners survive review because a terminal renders
-# them invisibly or reorders the text around them, while the compiler reads the
-# bytes: the Trojan Source class of attack. LC_ALL=C forces byte-wise matching
-# so multi-byte sequences are not treated as single printable characters.
-nonascii() {
-  LC_ALL=C grep -n '[^[:print:][:space:]]' "$@"
 }
 
 # Pick processes with fzf and signal them. Tab marks several. Defaults to
@@ -181,11 +139,6 @@ fkill() {
   local pids
   pids=$(ps -eo pid,user,%cpu,%mem,command --sort=-%cpu | sed 1d | fzf -m | awk '{print $1}')
   [[ -n "$pids" ]] && echo "$pids" | xargs kill "-${1:-KILL}"
-}
-
-# One PATH entry per line.
-printpath() {
-  print -l -- $path
 }
 
 # --- fastfetch banner on new interactive shell ---
