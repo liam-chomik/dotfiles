@@ -72,11 +72,29 @@ bindkey -M menuselect 'k' vi-up-line-or-history
 bindkey -M menuselect 'l' vi-forward-char
 
 # --- line editing ---
+# Stated explicitly. With neither -e nor -v given, zsh infers the keymap from
+# $EDITOR, so setting EDITOR=vim above would silently select vi keys; the
+# keymap should not be a side effect of an unrelated variable. vi matches the
+# editing-mode in inputrc, so readline programs and zsh agree.
+bindkey -v
+# Time to wait for the rest of a key sequence, in hundredths of a second. The
+# default 40 applies to Esc as well, putting a 400ms pause on every return to
+# normal mode.
+KEYTIMEOUT=1
+
+# vi insert mode drops the line-editing keys that are muscle memory from every
+# other shell. The same set inputrc restores for readline.
+bindkey -M viins '^A' beginning-of-line
+bindkey -M viins '^E' end-of-line
+bindkey -M viins '^W' backward-kill-word
+bindkey -M viins '^R' history-incremental-search-backward
+
 # Ctrl-x Ctrl-e opens the current command line in $EDITOR, which is the way to
 # fix a long pipeline without retyping it.
 autoload -Uz edit-command-line
 zle -N edit-command-line
-bindkey '^X^E' edit-command-line
+bindkey -M viins '^X^E' edit-command-line
+bindkey -M vicmd '^X^E' edit-command-line
 
 # --- plugins ---
 [[ -r ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh ]] \
@@ -123,6 +141,11 @@ alias_if_exists eza ls 'eza --icons --group-directories-first'
 alias_if_exists eza ll 'eza --icons --group-directories-first -l --group --links'
 alias_if_exists eza la 'eza --icons --group-directories-first -lah --group --links'
 alias_if_exists eza lt 'eza --icons --tree --level=2'
+
+# --- fd ---
+# Debian packages fd as fdfind, the upstream name colliding with an unrelated
+# package. The alias restores the name the documentation and every example use.
+alias_if_exists fdfind fd 'fdfind'
 
 # --- bat (replaces cat) ---
 export BAT_THEME="Gruvbox-Material-Dark"
