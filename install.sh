@@ -34,8 +34,6 @@ VIM_PACKS=(
   "https://github.com/sainnhe/gruvbox-material.git:themes/gruvbox-material"
   "https://github.com/ctrlpvim/ctrlp.vim.git:plugins/ctrlp.vim"
   "https://github.com/mileszs/ack.vim.git:plugins/ack.vim"
-  "https://github.com/preservim/nerdtree.git:plugins/nerdtree"
-  "https://github.com/easymotion/vim-easymotion.git:plugins/vim-easymotion"
 )
 
 # Cloned into ~/.zsh/<name>, where zshrc sources each one by path. Unlike vim

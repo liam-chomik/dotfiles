@@ -285,8 +285,8 @@ if exists('v:clipproviders')
 endif
 
 " --- netrw ---
-" Kept configured as a fallback: NERDTree owns the <leader>e mapping, but
-" :Lexplore and directory buffers still route here.
+" The file explorer. :Lexplore opens it in a side split, and directory buffers
+" route here too.
 let g:netrw_banner = 0
 let g:netrw_liststyle = 3         " tree view
 let g:netrw_winsize = 22
@@ -358,30 +358,6 @@ if executable('rg')
   set grepformat=%f:%l:%c:%m
 endif
 let g:ack_use_cword_for_empty_search = 1
-
-" nerdtree: file explorer.
-let g:NERDTreeWinSize = 30
-let g:NERDTreeShowHidden = 1
-let g:NERDTreeMinimalUI = 1
-" Do not let a lone explorer pane hold the session open.
-augroup nerdtree_last_window
-  autocmd!
-  autocmd BufEnter * if winnr('$') == 1 && exists('b:NERDTree')
-        \ && b:NERDTree.isTabTree() | quit | endif
-augroup END
-
-" vim-easymotion: jump to any visible position by typing a target label.
-" The default <Leader><Leader> prefix collides with the <leader><Space>
-" nohlsearch mapping. g:EasyMotion_leader_key relocates it while keeping
-" do_mapping on, which is what defines the per-motion maps hanging off the
-" prefix. Turning do_mapping off would suppress those too, leaving a prefix
-" that leads nowhere. The plugin expands this after mapleader is set.
-let g:EasyMotion_leader_key = '<Leader>m'
-let g:EasyMotion_smartcase = 1
-" Uppercase labels stand out against surrounding lowercase text; they are still
-" typed in lowercase.
-let g:EasyMotion_use_upper = 1
-let g:EasyMotion_keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ;'
 
 " Vim's bundled markdown syntax highlights fenced blocks only for the languages
 " named here, and conceals link and emphasis markup unless told otherwise.
@@ -504,7 +480,7 @@ command! -nargs=0 Sudow write !sudo tee % >/dev/null
 " Files
 nnoremap <leader>w :write<CR>
 nnoremap <leader>q :quit<CR>
-nnoremap <leader>e :NERDTreeToggle<CR>
+nnoremap <leader>e :Lexplore<CR>
 nnoremap <leader>f :find<Space>
 
 " Project search. The bang leaves the cursor in the current window rather than

@@ -36,8 +36,6 @@ jobs:
           for p in .vim/pack/themes/start/gruvbox-material \
                    .vim/pack/plugins/start/ctrlp.vim \
                    .vim/pack/plugins/start/ack.vim \
-                   .vim/pack/plugins/start/nerdtree \
-                   .vim/pack/plugins/start/vim-easymotion \
                    .zsh/zsh-autosuggestions \
                    .zsh/zsh-syntax-highlighting; do
             test -d "$p/.git" || { echo "missing: $p" >&2; exit 1; }
